@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Forma",
+    "slug": "forma",
+    "scheme": "forma",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-router"],
+    "ios": { "supportsTablet": true, "bundleIdentifier": "app.forma.fitness" },
+    "android": { "package": "app.forma.fitness" },
+    "web": { "bundler": "metro", "output": "single" }
+  }
+}
