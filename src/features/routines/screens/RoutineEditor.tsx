@@ -1,3 +1,4 @@
+import { useTheme } from '@/theme/provider';
 import { useState } from 'react';
 import { Alert, Modal, Platform, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -13,13 +14,13 @@ import {
   Field,
   Heading,
   Screen,
-  s,
+  useUiStyles,
 } from '@/components/ui';
 import { useData, useSave } from '@/lib/store';
 import { exercises, exerciseById } from '@/mocks/exercises';
 import { PlannedExercise } from '@/types';
-import { uid } from '@/lib/training';
-import { colors as c } from '@/theme';
+import { adoptRoutine, uid } from '@/lib/training';
+
 import { validatePlan } from '../utils/validation';
 const schema = z.object({
   name: z.string().trim().min(2, 'Use at least 2 characters.').max(60),
@@ -27,6 +28,9 @@ const schema = z.object({
 });
 type Values = z.infer<typeof schema>;
 export default function RoutineEditor() {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { data } = useData();
   const save = useSave();
@@ -75,7 +79,7 @@ export default function RoutineEditor() {
         exercises: items,
       };
       await save.mutateAsync((d) => ({
-        ...d,
+        ...adoptRoutine(d, routine.id),
         routines: original
           ? d.routines.map((r) => (r.id === id ? routine : r))
           : [...d.routines, routine],

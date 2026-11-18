@@ -1,3 +1,4 @@
+import { useTheme } from '@/theme/provider';
 import { useState } from 'react';
 import { Modal, Text, View } from 'react-native';
 import { Dumbbell } from 'lucide-react-native';
@@ -8,13 +9,16 @@ import {
   Heading,
   ListRow,
   Screen,
-  s,
+  useUiStyles,
 } from '@/components/ui';
 import { exercises } from '@/mocks/exercises';
 import { Exercise } from '@/types';
-import { colors as c } from '@/theme';
+
 import { ExerciseFilters, emptyFilters } from '../components/ExerciseFilters';
 export default function ExercisesScreen() {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState(emptyFilters);
   const { muscle, equipment } = filters;
@@ -28,9 +32,8 @@ export default function ExercisesScreen() {
   return (
     <Screen>
       <Heading
-        eyebrow="MOVE WITH CONFIDENCE"
         title="Exercise library"
-        detail="Find your next movement. Learn the fundamentals."
+        detail="Search by name or filter by muscle and equipment."
       />
       <Field
         label="Search exercises"

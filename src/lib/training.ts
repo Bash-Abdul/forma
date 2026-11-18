@@ -1,4 +1,4 @@
-import { Routine, Workout } from '@/types';
+import { AppData, Routine, Workout } from '@/types';
 export const uid = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 export function startWorkout(routine: Routine): Workout {
@@ -51,4 +51,24 @@ export function nextRoutine(routines: Routine[]): Routine | undefined {
   return [...routines].sort(
     (a, b) => ((a.day - 1 - today + 7) % 7) - ((b.day - 1 - today + 7) % 7),
   )[0];
+}
+
+/** Starter templates become personal routines only after an explicit save or session start. */
+export function adoptRoutine(data: AppData, routineId: string): AppData {
+  return {
+    ...data,
+    demoRecords: data.demoRecords
+      ? {
+          ...data.demoRecords,
+          routineIds: data.demoRecords.routineIds?.filter(
+            (id) => id !== routineId,
+          ),
+        }
+      : undefined,
+  };
+}
+export function activateRoutine(data: AppData, routine: Routine): AppData {
+  return data.active
+    ? data
+    : { ...adoptRoutine(data, routine.id), active: startWorkout(routine) };
 }

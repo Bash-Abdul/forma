@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useForm, FieldPathValue } from 'react-hook-form';
+import { useForm, useWatch, FieldPathValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { useData, useSave } from '@/lib/store';
@@ -23,7 +23,10 @@ export function useOnboarding() {
     resolver: zodResolver(preferencesSchema),
     defaultValues: data?.onboarding?.preferences ?? defaultPreferences,
   });
-  const values = form.watch();
+  const values = useWatch({
+    control: form.control,
+    compute: (values) => values,
+  });
   function setPreference<K extends keyof TrainingPreferences>(
     key: K,
     value: TrainingPreferences[K],
@@ -47,7 +50,7 @@ export function useOnboarding() {
   const saveOnly = form.handleSubmit(async (p) => {
     try {
       await save.mutateAsync((d) => savePreferences(d, p));
-      router.replace({
+      router.dismissTo({
         pathname: '/profile',
         params: { saved: 'preferences' },
       });
@@ -61,7 +64,7 @@ export function useOnboarding() {
     if (!plan || save.isPending) return;
     try {
       await save.mutateAsync((d) => acceptPlan(d, values, plan, acceptanceId));
-      router.replace({ pathname: '/profile', params: { saved: 'plan' } });
+      router.dismissTo({ pathname: '/profile', params: { saved: 'plan' } });
     } catch (e) {
       setError(
         e instanceof Error
@@ -73,7 +76,7 @@ export function useOnboarding() {
   async function skip(): Promise<void> {
     try {
       await save.mutateAsync(skipOnboarding);
-      router.replace(data?.onboarding?.preferences ? '/profile' : '/');
+      router.dismissTo(data?.onboarding?.preferences ? '/profile' : '/');
     } catch {
       setError('Couldn’t save your choice. Please try again.');
     }

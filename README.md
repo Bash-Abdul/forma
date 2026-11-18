@@ -1,56 +1,69 @@
-# Forma
+# Forma v0.3
 
-A local-first fitness companion for iOS and Android, built with Expo, React Native, TypeScript and Expo Router.
+A local-first fitness companion for iOS and Android. Learn, plan, train and track at your own pace, with educational nutrition guides and a clearly labelled preview of future community features.
 
-See the [implementation log](CHANGELOG.md) for dated updates, delivered features, validation results and outstanding limitations.
+See the dated [implementation log](CHANGELOG.md) and [iPhone testing guide](docs/iphone-testing.md).
 
 ## Run
 
-Use Node.js 20.19+ (Node 24 recommended).
+Use Node.js 24.3+ on the Node 24 line (recommended), or Node 22.13+ on the Node 22 line. The project targets Expo SDK 58.
 
 ```sh
 npm install
 npm start
 ```
 
-Open in an Expo SDK 55 compatible Expo Go client or use `npm run ios` / `npm run android` with a configured simulator. `npm run web` provides a browser preview.
+For the existing iPhone/WSL workflow, sign in to the same Expo account in the CLI and Expo Go, then use the tunnel:
+
+```sh
+npx expo login
+npm run start:go:tunnel
+```
+
+`npm run start:go` starts Expo Go with a cleared Metro cache after SDK changes. `npm run web` opens a browser preview. Do not delete Expo Go or clear app storage to update Forma.
+
+## What works
+
+- Bundled Barlow Condensed headings/numbers paired with DM Sans reading and controls, with native/browser fallbacks if font loading fails.
+
+- A weekly workout calendar and green Home feature panel, with simpler lists and less decorative UI.
+- Saved **Light / Dark / System** appearance in **Profile → Appearance**. System follows device changes; explicit choices override it. Existing installs default to System and keep their records.
+
+- A dark branded launch with a short wordmark entrance/fade and a reduced-motion alternative. It runs once per app launch, not during navigation.
+- One welcome screen with Get started, Resume setup and Skip & explore actions.
+- Adaptive onboarding for multiple interests: learning, weight management, training, progress, nutrition, community and exploring. Questions depend on the selected interests.
+- Optional body measurements, metric/imperial preferences, lose/gain/maintain goals, an activity baseline, learning topics and training-together preferences. Learning/exploring paths do not ask for body measurements.
+- Locally saved answers and resumable plan drafts. Training plan generation and acceptance are optional. Existing four-day Upper/Lower templates remain in the routine library.
+- Home sections shaped by interests. Personal figures use actual saved records; profile baselines and activity estimates are labelled separately.
+- Six offline learning guides, exercise search/filtering, routine editing, deterministic 2–5-day plan generation, workout logging/resume/history, weight logging and charts.
+- Profile editing and a universal Explore screen. Selecting interests changes Home, not access to other features.
+
+Nutrition is educational only: there is no meal tracking, calorie-target calculation or macro prescription. Community is informational only: no live users, matching, messages or location permissions. There is no backend, app authentication, external AI or remote content API.
+
+## Data and migrations
+
+Data stays in AsyncStorage under the existing **`forma:v1` key**. The value now uses **schema version 2**, with a distinct typed fitness profile alongside existing routines, workouts and weight entries. Legacy v1 payloads are migrated on read and written in the new format on the next successful save. Previously completed or skipped users are not forced through onboarding.
+
+New users have empty workout and weight history. Starter routines are labelled templates and become personal routines when explicitly saved or started. Older sample records remain accessible and are labelled as examples; they are excluded from personal totals, trends and previous-performance comparisons. Migration does not delete historical records or replace accepted plans.
+
+Measurements are canonical kg/cm internally and converted for display/input. Profile starting weight is separate from logged history. Optional measurements save when Continue is pressed; other valid choices and plan previews save locally as the user goes. Changes to profile preferences never regenerate existing routines automatically.
+
+Automatic personalised plans and weight goals are scoped to adults 18+ in this demo. Users may decline to provide an age group and continue exploring. This product scope is not presented as a legal age requirement; manual features and existing records remain accessible.
+
+If storage fails or does not respond within eight seconds, the app provides Retry and a clearly labelled session-only mode. Session-only changes never overwrite unreadable saved records and are not retained after closing the app. There is no cloud sync or export; clearing app storage removes local data.
+
+Route files stay thin. Feature services contain profile validation, conditional steps, migration and plan rules. TanStack Query and `lib/store.tsx` provide the asynchronous persistence boundary.
+
+## Validation
 
 ```sh
 npm run typecheck
 npm run lint
 npm test
+npx expo-doctor@latest
+npx expo export --platform all
 ```
 
-## Included
+Tests cover existing training rules, conditional onboarding, migration and record preservation, draft persistence, age-aware personalisation, units and honest Home summaries. See the implementation log for the checks actually run for each update.
 
-- Guided onboarding for goals, experience, 2–5 training days, session duration, equipment and guidance level.
-- Deterministic starting plans with explanations, editable drafts and explicit acceptance.
-- A Profile tab for locally saved preferences; independent training can save preferences without accepting a plan.
-
-- Dashboard with upcoming scheduled routine, actual weekly completion, recent sessions and weight.
-- Editable four-day Upper/Lower sample programme. Create, reorder, configure and delete routines.
-- 29 searchable exercises, muscle/equipment filters and execution guidance.
-- Persisted active workout, previous exercise performance, editable sets and completed session history.
-- Weight logging with validation, weight trend chart and training volume.
-
-Routine templates and actual session sets are separate snapshots. Completing a workout saves completed sets only. A single active session can be resumed after restarting the app. All data, including initial examples, stays in AsyncStorage under the versioned `forma:v1` key. There are no accounts, backend services, remote APIs or image dependencies. Clearing app storage removes local records; cloud sync and export are not included.
-
-Route files stay thin; screen implementations live in feature modules. `lib/store.tsx` is the asynchronous persistence boundary, backed by TanStack Query, and can be replaced with a repository/API implementation later. Initial example records use dates relative to first launch.
-
-## Onboarding and plan rules
-
-On first opening this version, new and existing users can complete onboarding or skip it. Existing v1 storage is read without resetting routines, workouts, weights or an active session. Preferences can be revisited from Profile.
-
-The generator uses local movement templates and equipment rules. Two days use full-body sessions; three days use full-body sessions for beginners, general fitness or the lose-weight goal, and an upper/lower/full-body split otherwise. Four days use an upper/lower split. Five days use upper/lower plus a light technique day for beginners, or upper/lower/push/pull/legs for experienced users. Experience, goal and duration adjust sets, reps and exercise count. Equipment-free upper-back work is explicitly identified as a limited substitute for loaded pulling.
-
-The review screen allows changing routine names, scheduled days, exercises, order, sets and target ranges. Drafts stay unsaved until acceptance; leaving the flow discards the draft. Accepting appends routines with new IDs, and the dashboard uses the latest accepted plan for its suggestions. Saving preferences alone never regenerates or edits routines. Independent mode opens the routine library instead of automatically starting a suggested workout.
-
-The plan rules live in `src/features/onboarding/services/generator.ts`; persistence transformations live in `services/profile.ts`. Both reuse the existing routine and exercise models. The storage key remains `forma:v1`, with optional onboarding fields for backwards compatibility. No dependencies, backend services or external APIs were added for this feature.
-
-### Beginner and experienced onboarding
-
-Goals include Lose weight, Build strength, Build muscle and General fitness. Lose weight uses a repeatable strength-training foundation and does not promise a particular weight change.
-
-Beginners receive definitions of training days and session duration, optional 3-day/45-minute demo defaults, equipment descriptions and a plain-language introduction to sets, reps and training splits. Intermediate and experienced users see concise scheduling and equipment choices. The 45-minute suggestion is a planning default, not a claim that every beginner needs a particular workout length; shorter sessions remain available. The emphasis on starting gradually is consistent with [NHS strength and flexibility guidance](https://www.nhs.uk/live-well/exercise/how-to-improve-strength-flexibility/).
-
-Equipment can be marked as “I’m not sure yet.” This preference is saved explicitly and generates an equipment-free starter plan using bodyweight movements; it never assumes access to a gym. Existing saved equipment selections remain valid and are not reset. The guidance-level step is unchanged.
+Native splash configuration requires a release build for a faithful preview; [Expo Go does not fully replicate it](https://docs.expo.dev/versions/latest/sdk/splash-screen/). The animated in-app launch can still be viewed in Expo Go. Physical iPhone checks remain necessary for cold launch, VoiceOver, Reduce Motion, keyboard/safe-area layouts and app termination/resume.

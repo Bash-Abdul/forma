@@ -3,12 +3,34 @@
     "name": "Forma",
     "slug": "forma",
     "scheme": "forma",
-    "version": "1.0.0",
+    "version": "0.3.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
-    "plugins": ["expo-router"],
-    "ios": { "supportsTablet": true, "bundleIdentifier": "app.forma.fitness" },
-    "android": { "package": "app.forma.fitness" },
-    "web": { "bundler": "metro", "output": "single" }
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-system-ui",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#192C29",
+          "dark": {
+            "backgroundColor": "#192C29"
+          }
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.forma.fitness"
+    },
+    "android": {
+      "package": "app.forma.fitness"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "backgroundColor": "#192C29"
   }
 }

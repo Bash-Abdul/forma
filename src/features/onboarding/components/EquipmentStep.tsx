@@ -1,5 +1,5 @@
 import { Text } from 'react-native';
-import { Card, s } from '@/components/ui';
+import { Card, useUiStyles } from '@/components/ui';
 import { SelectionGroup } from '@/components/ui/SelectionGroup';
 import { TrainingPreferences } from '@/types';
 type Props = {
@@ -45,6 +45,8 @@ export function EquipmentStep({
   onEquipment,
   error,
 }: Props) {
+  const s = useUiStyles();
+
   const beginner = p.experience === 'beginner';
   const unsure = p.equipmentKnowledge === 'unsure';
   return (

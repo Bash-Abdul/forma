@@ -1,11 +1,12 @@
+import { useTheme } from '@/theme/provider';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowDown, ArrowUp, ChevronDown } from 'lucide-react-native';
-import { Button, Card, Chip, Field, s } from '@/components/ui';
+import { Button, Card, Chip, Field, useUiStyles } from '@/components/ui';
 import { ChoiceSheet } from '@/components/ui/ChoiceSheet';
 import { exerciseById } from '@/mocks/exercises';
 import { Routine, TrainingPreferences } from '@/types';
-import { colors as c } from '@/theme';
+
 import { availableExercises, GeneratedPlan } from '../services/generator';
 type Props = {
   plan: GeneratedPlan;
@@ -13,6 +14,9 @@ type Props = {
   onUpdate: (index: number, update: (routine: Routine) => Routine) => void;
 };
 export function PlanReview({ plan, preferences, onUpdate }: Props) {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+
   const [expanded, setExpanded] = useState<number | null>(null);
   const [picker, setPicker] = useState<{
     routine: number;

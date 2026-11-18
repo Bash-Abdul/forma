@@ -1,14 +1,7 @@
-import { Text, View, StyleSheet, Pressable } from 'react-native';
+import { fonts } from '@/theme/typography';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import {
-  ArrowRight,
-  Dumbbell,
-  Flame,
-  Scale,
-  Check,
-  CalendarDays,
-  Activity,
-} from 'lucide-react-native';
+import { ArrowRight, BookOpen, UserRound } from 'lucide-react-native';
 import {
   Button,
   Card,
@@ -16,356 +9,391 @@ import {
   ListRow,
   Screen,
   Section,
-  s,
+  useUiStyles,
 } from '@/components/ui';
-import { colors as c } from '@/theme';
 import { useData, useSave } from '@/lib/store';
-import { nextRoutine, startWorkout, weekStart } from '@/lib/training';
-import { trainingRoutines } from '@/features/onboarding/services/profile';
+import { activateRoutine } from '@/lib/training';
+import { Palette } from '@/theme';
+import { useTheme, useThemedStyles } from '@/theme/provider';
+import { formatWeight } from '@/features/profile/services/measurements';
+import {
+  articles,
+  recommendedArticles,
+} from '@/features/learn/services/articles';
+import { homeSections, homeSummary } from '../services';
+import { WeightTrend } from '@/features/progress/components/WeightTrend';
+import { WeekCalendar } from '../components/WeekCalendar';
+
 export default function DashboardScreen() {
   const { data } = useData();
   const save = useSave();
+  const { colors: c } = useTheme();
+  const s = useUiStyles();
+  const styles = useThemedStyles(createStyles);
   if (!data) return null;
-  const currentRoutines = trainingRoutines(data);
-  const next = nextRoutine(currentRoutines);
-  const target =
-    data.onboarding?.acceptedPlan?.days ??
-    data.onboarding?.preferences?.days ??
-    4;
-  const start = weekStart();
-  const weekly = data.workouts.filter((w) => new Date(w.finishedAt!) >= start);
-  const weight = data.weights.at(-1);
-  const recent = [...data.workouts].reverse().slice(0, 3);
-  const guidance = data.onboarding?.preferences?.guidance;
-  const begin = async () => {
+  const p = data.fitnessProfile;
+  const summary = homeSummary(data);
+  const sections = homeSections(data);
+  const first = sections[0];
+  const trainingHero =
+    Boolean(data.active) || first === 'training' || first === 'explore';
+  const guide = recommendedArticles(p)[0];
+  const hero = trainingHero
+    ? {
+        label: data.active
+          ? 'IN PROGRESS'
+          : summary.next
+            ? 'NEXT WORKOUT'
+            : 'YOUR TRAINING',
+        title:
+          data.active?.name ??
+          (p.guidance === 'independent'
+            ? 'Choose a session'
+            : (summary.next?.name ?? 'Choose a session')),
+        detail: data.active
+          ? 'Your logged sets are saved. Pick up where you left off.'
+          : summary.next
+            ? `${summary.next.exercises.length} exercises · ${summary.next.exercises.reduce((n, e) => n + e.sets, 0)} sets`
+            : 'Browse the templates or build your own session.',
+        action: data.active
+          ? 'Resume workout'
+          : summary.next && p.guidance !== 'independent'
+            ? 'Start workout'
+            : 'View routines',
+      }
+    : first === 'weight' || first === 'progress'
+      ? {
+          label: 'YOUR NEXT CHECK-IN',
+          title: 'Weight check-in',
+          detail: summary.latestWeight
+            ? `Last entry: ${formatWeight(summary.latestWeight.kg, p.units)}`
+            : 'Log a measurement whenever you’re ready.',
+          action: 'Log weight',
+        }
+      : first === 'community'
+        ? {
+            label: 'TRAINING TOGETHER',
+            title: 'Training together',
+            detail:
+              'Explore training-together preferences. Matching is coming later.',
+            action: 'View preferences',
+          }
+        : {
+            label: 'FROM THE LIBRARY',
+            title: guide?.title ?? 'Fitness basics',
+            detail: guide
+              ? `${guide.minutes} minutes · ${guide.topic}`
+              : 'Practical guides to get started.',
+            action: 'Read guide',
+          };
+  async function begin(): Promise<void> {
+    if (!data) return;
     if (data.active) {
       router.push('/workout');
       return;
     }
-    if (guidance === 'independent') {
+    if (p.guidance === 'independent' || !summary.next) {
       router.push('/routines');
       return;
     }
-    if (next) {
-      try {
-        await save.mutateAsync((d) => ({ ...d, active: startWorkout(next) }));
-        router.push('/workout');
-      } catch {
-        /* error is rendered below */
-      }
-    } else router.push('/routine');
-  };
+    try {
+      await save.mutateAsync((d) => activateRoutine(d, summary.next!));
+      router.push('/workout');
+    } catch {
+      /* Inline feedback below. */
+    }
+  }
+  function openHero(): void {
+    if (trainingHero) {
+      void begin();
+      return;
+    }
+    if (first === 'weight' || first === 'progress') {
+      router.push('/weight');
+      return;
+    }
+    if (first === 'community') {
+      router.push('/community');
+      return;
+    }
+    router.push(
+      guide ? { pathname: '/article', params: { id: guide.id } } : '/learn',
+    );
+  }
   return (
     <Screen>
       <View style={styles.brandRow}>
-        <View style={s.row}>
-          <View style={styles.logo}>
-            <Activity color="white" size={22} />
-          </View>
-          <Text style={styles.brand}>
-            forma<Text style={{ color: c.primary }}>.</Text>
-          </Text>
-        </View>
+        <Text style={styles.brand}>
+          forma<Text style={{ color: c.primary }}>.</Text>
+        </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open profile"
           onPress={() => router.push('/profile')}
-          style={styles.avatar}
+          style={styles.profile}
         >
-          <Text style={{ color: c.primary, fontWeight: '700' }}>Y</Text>
+          <UserRound size={22} color={c.text} />
         </Pressable>
       </View>
       <Heading
-        eyebrow={new Date()
-          .toLocaleDateString('en-GB', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })
-          .toUpperCase()}
-        title="A little stronger, every day."
-        detail="Show up for yourself. We’ll keep track."
+        title="Your week."
+        detail={new Date().toLocaleDateString('en-GB', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+        })}
       />
+      <WeekCalendar data={data} />
       <View style={styles.hero}>
-        <View style={styles.heroTop}>
-          <View style={styles.pill}>
-            <View style={styles.dot} />
-            <Text style={styles.pillText}>
-              {data.active
-                ? 'WORKOUT IN PROGRESS'
-                : guidance === 'independent'
-                  ? 'YOUR TRAINING'
-                  : guidance === 'flexible'
-                    ? 'SUGGESTED WORKOUT'
-                    : 'YOUR NEXT WORKOUT'}
-            </Text>
-          </View>
-          <Dumbbell color="#B9D3B7" size={26} />
-        </View>
-        <Text style={styles.heroTitle}>
-          {data.active?.name ??
-            (guidance === 'independent'
-              ? 'Choose today’s workout'
-              : (next?.name ?? 'Your journey starts here'))}
-        </Text>
-        <Text style={styles.heroSub}>
-          {guidance === 'independent' && !data.active
-            ? 'Your routines, on your schedule.'
-            : next
-              ? `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][next.day - 1]}  ·  ${next.exercises.length} exercises  ·  ${next.exercises.reduce((n, e) => n + e.sets, 0)} sets`
-              : 'Create a routine that works for you.'}
-        </Text>
-        <View style={styles.heroDivider} />
-        <View style={styles.heroBottom}>
-          <View>
-            <Text style={styles.heroCaption}>YOUR PROGRAMME</Text>
-            <Text style={styles.heroProgramme}>
-              {data.onboarding?.acceptedPlan?.title ?? 'Your routine library'}
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              data.active
-                ? 'Resume workout'
-                : guidance === 'independent'
-                  ? 'Choose a routine'
-                  : 'Start workout'
-            }
-            disabled={save.isPending}
-            onPress={() => void begin()}
-            style={styles.start}
-          >
-            <ArrowRight size={24} color={c.text} />
-          </Pressable>
-        </View>
+        <Text style={styles.heroLabel}>{hero.label}</Text>
+        <Text style={styles.heroTitle}>{hero.title}</Text>
+        <Text style={styles.heroDetail}>{hero.detail}</Text>
+        <Pressable
+          accessibilityRole="button"
+          disabled={save.isPending}
+          accessibilityState={{ disabled: save.isPending }}
+          onPress={openHero}
+          style={({ pressed }) => [
+            styles.heroAction,
+            { opacity: save.isPending ? 0.4 : pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Text style={styles.heroActionText}>{hero.action}</Text>
+          <ArrowRight size={19} color="#192C29" />
+        </Pressable>
       </View>
       {save.isError ? (
-        <Text style={s.error}>
-          Couldn’t start your workout. Please try again.
+        <Text accessibilityRole="alert" style={s.error}>
+          Couldn’t start the workout. Please try again.
         </Text>
       ) : null}
-      <Section
-        title="This week"
-        action="View progress"
-        onPress={() => router.push('/progress')}
-      />
-      <Card>
-        <View style={[s.row, { justifyContent: 'space-between' }]}>
-          <View style={s.row}>
-            <View style={s.iconBox}>
-              <Flame color={c.primary} size={21} />
-            </View>
-            <View>
-              <Text style={s.rowTitle}>Building momentum</Text>
-              <Text style={s.small}>
-                {weekly.length} of {target} workouts completed
+      {p.onboarding.status !== 'complete' ? (
+        <ListRow
+          title="Finish your setup"
+          detail="Your answers are saved."
+          onPress={() => router.push('/onboarding')}
+        />
+      ) : null}
+      {sections.includes('training') ? (
+        <View style={styles.section}>
+          <Section
+            title="Training"
+            action="Routines"
+            onPress={() => router.push('/routines')}
+          />
+          {!trainingHero ? (
+            <Card>
+              <Text style={s.sectionTitle}>
+                {summary.next?.name ?? 'Choose a routine'}
               </Text>
+              <Button
+                label={summary.next ? 'Start workout' : 'View routines'}
+                disabled={save.isPending}
+                onPress={() => void begin()}
+              />
+            </Card>
+          ) : null}
+          <View style={styles.stats}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={s.metric}>{summary.weekly.length}</Text>
+              <Text style={s.small}>Sessions this week</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={s.metric}>{summary.workouts.length}</Text>
+              <Text style={s.small}>Sessions total</Text>
             </View>
           </View>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: c.primary }}>
-            {Math.min(100, Math.round((weekly.length / target) * 100))}
-            <Text style={s.small}>%</Text>
-          </Text>
-        </View>
-        <View style={styles.days}>
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, i) => {
-            const done = weekly.some(
-              (w) => (new Date(w.finishedAt!).getDay() + 6) % 7 === i,
-            );
-            const today = (new Date().getDay() + 6) % 7 === i;
-            return (
-              <View key={i} style={{ alignItems: 'center', gap: 9 }}>
-                <Text style={s.small}>{day}</Text>
-                <View
-                  style={[
-                    styles.day,
-                    done && { backgroundColor: c.primary },
-                    today &&
-                      !done && { borderColor: c.primary, borderWidth: 1.5 },
-                  ]}
-                >
-                  {done ? (
-                    <Check size={16} color="white" />
-                  ) : (
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: today ? c.primary : c.muted,
-                      }}
-                    >
-                      {new Date(start.getTime() + i * 86400000).getDate()}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </Card>
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        <Card style={{ flex: 1 }}>
-          <Scale size={20} color={c.primary} />
-          <Text style={s.small}>Latest weight</Text>
-          <Text style={s.metric}>
-            {weight?.kg ?? '—'} <Text style={s.small}>kg</Text>
-          </Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.push('/weight')}
+            onPress={() => router.push('/training-setup')}
+            style={styles.textAction}
           >
-            <Text style={s.link}>Log weight +</Text>
+            <Text style={s.link}>Training plan & preferences</Text>
+            <ArrowRight size={16} color={c.primary} />
           </Pressable>
-        </Card>
-        <Card style={{ flex: 1 }}>
-          <Dumbbell size={20} color={c.primary} />
-          <Text style={s.small}>Total workouts</Text>
-          <Text style={s.metric}>
-            {data.workouts.length} <Text style={s.small}>sessions</Text>
-          </Text>
-          <Text style={s.small}>Every session counts.</Text>
-        </Card>
-      </View>
-      <Section
-        title="Recent activity"
-        action="See all"
-        onPress={() => router.push('/history')}
-      />
-      <Card style={{ paddingVertical: 5 }}>
-        {recent.length ? (
-          recent.map((w, i) => (
-            <View key={w.id}>
-              {i ? <View style={s.divider} /> : null}
+        </View>
+      ) : null}
+      {sections.includes('weight') ? (
+        <View style={styles.section}>
+          <Section
+            title="Weight"
+            action="Log weight"
+            onPress={() => router.push('/weight')}
+          />
+          <Card>
+            <View style={{ gap: 4 }}>
+              <Text style={s.metric}>
+                {summary.latestWeight
+                  ? formatWeight(summary.latestWeight.kg, p.units)
+                  : p.metrics.weightKg !== undefined
+                    ? formatWeight(p.metrics.weightKg, p.units)
+                    : 'No entries yet'}
+              </Text>
+              <Text style={s.small}>
+                {summary.latestWeight
+                  ? `Logged ${new Date(summary.latestWeight.date).toLocaleDateString('en-GB')}`
+                  : p.metrics.weightKg !== undefined
+                    ? 'Starting weight from your profile'
+                    : 'Your first check-in will appear here.'}
+              </Text>
+            </View>
+            {p.metrics.goalWeightKg !== undefined ? (
+              <Text style={s.small}>
+                Goal · {formatWeight(p.metrics.goalWeightKg, p.units)}
+              </Text>
+            ) : null}
+            <WeightTrend entries={summary.weights} units={p.units} />
+          </Card>
+          {p.activity.level || p.activity.steps !== undefined ? (
+            <Text style={s.small}>
+              Activity estimate from setup
+              {p.activity.steps !== undefined
+                ? ` · ${p.activity.steps.toLocaleString()} steps/day`
+                : ` · ${p.activity.level}`}
+              . Not measured today.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+      {summary.recent.length &&
+      (sections.includes('training') || sections.includes('progress')) ? (
+        <View style={styles.section}>
+          <Section
+            title="Recent sessions"
+            action="History"
+            onPress={() => router.push('/history')}
+          />
+          {summary.recent.slice(0, 2).map((w) => (
+            <ListRow
+              key={w.id}
+              title={w.name}
+              detail={new Date(w.finishedAt!).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+              })}
+              onPress={() =>
+                router.push({ pathname: '/workout', params: { id: w.id } })
+              }
+            />
+          ))}
+        </View>
+      ) : null}
+      {sections.includes('progress') ? (
+        <ListRow
+          title="Your progress"
+          detail={`${summary.workouts.length} sessions · ${summary.weights.length} weight entries`}
+          onPress={() => router.push('/progress')}
+        />
+      ) : null}
+      {sections.includes('learn') || sections.includes('nutrition') ? (
+        <View style={styles.section}>
+          <Section
+            title={
+              sections.includes('learn')
+                ? 'From the library'
+                : 'Nutrition basics'
+            }
+            action="All guides"
+            onPress={() => router.push('/learn')}
+          />
+          {(sections.includes('learn')
+            ? recommendedArticles(p)
+            : articles.filter((a) => a.topic === 'nutrition')
+          )
+            .slice(0, 2)
+            .map((a) => (
               <ListRow
-                title={w.name}
-                detail={`${new Date(w.finishedAt!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}  ·  ${w.exercises.length} exercises  ·  Completed`}
-                icon={<Dumbbell size={20} color={c.primary} />}
+                key={a.id}
+                title={a.title}
+                detail={`${a.minutes} min read`}
+                icon={<BookOpen size={20} color={c.primary} />}
                 onPress={() =>
-                  router.push({ pathname: '/workout', params: { id: w.id } })
+                  router.push({ pathname: '/article', params: { id: a.id } })
                 }
               />
-            </View>
-          ))
-        ) : (
-          <Text style={[s.body, { padding: 12 }]}>
-            Your first session is the start of something good.
-          </Text>
-        )}
-      </Card>
-      <View style={styles.note}>
-        <CalendarDays size={18} color={c.primary} />
-        <Text style={[s.small, { flex: 1 }]}>
-          Consistency over perfection. One workout at a time.
-        </Text>
-      </View>
-      <Button
-        label={
-          data.active
-            ? 'Resume your workout'
-            : guidance === 'independent'
-              ? 'Choose a routine'
-              : 'Let’s get moving'
-        }
-        onPress={() => void begin()}
-        icon={<ArrowRight size={18} color="white" />}
+            ))}
+        </View>
+      ) : null}
+      {sections.includes('community') && first !== 'community' ? (
+        <ListRow
+          title="Training together"
+          detail="Preferences now · matching coming later"
+          onPress={() => router.push('/community')}
+        />
+      ) : null}
+      <View style={s.divider} />
+      <ListRow
+        title="Explore Forma"
+        detail="Exercises, learning, routines and more"
+        onPress={() => router.push('/explore')}
       />
     </Screen>
   );
 }
-const styles = StyleSheet.create({
-  brandRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  logo: {
-    height: 33,
-    width: 33,
-    borderRadius: 10,
-    backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brand: {
-    fontSize: 27,
-    fontWeight: '800',
-    letterSpacing: -1.4,
-    color: c.text,
-  },
-  avatar: {
-    height: 37,
-    width: 37,
-    borderRadius: 6,
-    backgroundColor: '#E7ECDD',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hero: {
-    backgroundColor: '#225B4B',
-    borderRadius: 10,
-    padding: 24,
-    gap: 16,
-    overflow: 'hidden',
-  },
-  heroTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pill: {
-    flexDirection: 'row',
-    gap: 7,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    paddingHorizontal: 0,
-    paddingVertical: 7,
-    borderRadius: 6,
-  },
-  dot: { height: 5, width: 5, backgroundColor: c.lime, borderRadius: 3 },
-  pillText: {
-    fontSize: 8,
-    fontWeight: '700',
-    letterSpacing: 1,
-    color: '#E6F0DF',
-  },
-  heroTitle: {
-    fontSize: 30,
-    fontWeight: '600',
-    letterSpacing: -0.8,
-    color: 'white',
-    marginTop: 5,
-  },
-  heroSub: { fontSize: 12, color: '#BDD1C8' },
-  heroDivider: { height: 1, backgroundColor: '#477766', marginTop: 7 },
-  heroBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  heroCaption: {
-    fontSize: 8,
-    letterSpacing: 1.6,
-    color: '#A8C6B9',
-    marginBottom: 7,
-  },
-  heroProgramme: { fontSize: 13, fontWeight: '500', color: 'white' },
-  start: {
-    backgroundColor: c.lime,
-    width: 47,
-    height: 47,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  days: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  day: {
-    width: 32,
-    height: 32,
-    borderRadius: 18,
-    backgroundColor: c.bg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  note: { flexDirection: 'row', gap: 10, padding: 5, alignItems: 'center' },
-});
+const createStyles = (c: Palette) =>
+  StyleSheet.create({
+    brandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    brand: {
+      fontSize: 30,
+      fontFamily: fonts.semibold,
+      letterSpacing: -1.6,
+      color: c.text,
+    },
+    profile: {
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    section: { gap: 12 },
+    hero: { padding: 24, gap: 16, backgroundColor: c.hero, borderRadius: 3 },
+    heroLabel: {
+      color: c.heroMuted,
+      fontSize: 10,
+      letterSpacing: 1.6,
+      fontFamily: fonts.semibold,
+    },
+    heroTitle: {
+      color: c.onHero,
+      fontSize: 40,
+      fontFamily: fonts.display,
+      letterSpacing: 0,
+      lineHeight: 44,
+    },
+    heroDetail: {
+      fontFamily: fonts.regular,
+      color: c.heroMuted,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    heroAction: {
+      backgroundColor: c.lime,
+      minHeight: 48,
+      padding: 14,
+      marginTop: 12,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderRadius: 2,
+      gap: 12,
+    },
+    heroActionText: {
+      color: '#192C29',
+      fontSize: 14,
+      fontFamily: fonts.semibold,
+      flexShrink: 1,
+    },
+    stats: { flexDirection: 'row', paddingVertical: 14, gap: 24 },
+    statDivider: { width: 1, backgroundColor: c.line },
+    textAction: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      minHeight: 44,
+    },
+  });

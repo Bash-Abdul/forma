@@ -1,20 +1,30 @@
+import { useTheme } from '@/theme/provider';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Dumbbell, Plus, ArrowUpRight } from 'lucide-react-native';
-import { Button, Card, Empty, Heading, Screen, s } from '@/components/ui';
+import {
+  Button,
+  Card,
+  Empty,
+  Heading,
+  Screen,
+  useUiStyles,
+} from '@/components/ui';
 import { useData, useSave } from '@/lib/store';
-import { startWorkout } from '@/lib/training';
-import { colors as c } from '@/theme';
+import { activateRoutine } from '@/lib/training';
+
 export default function RoutinesScreen() {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+
   const { data } = useData();
   const save = useSave();
   if (!data) return null;
   return (
     <Screen>
       <Heading
-        eyebrow="YOUR TRAINING, YOUR WAY"
         title="Routines"
-        detail="A plan to come back to. Progress to build on."
+        detail="Your saved workouts and starter templates."
       />
       <Card style={{ backgroundColor: c.pale, borderColor: c.pale }}>
         <Text style={s.sectionTitle}>
@@ -43,7 +53,10 @@ export default function RoutinesScreen() {
                   routine.day - 1
                 ]
               }{' '}
-              · DAY {i + 1}
+              ·{' '}
+              {data.demoRecords?.routineIds?.includes(routine.id)
+                ? 'STARTER TEMPLATE'
+                : `DAY ${i + 1}`}
             </Text>
           </View>
           <Text style={[s.sectionTitle, { fontSize: 23 }]}>{routine.name}</Text>
@@ -63,10 +76,7 @@ export default function RoutinesScreen() {
                     return;
                   }
                   void save
-                    .mutateAsync((d) => ({
-                      ...d,
-                      active: startWorkout(routine),
-                    }))
+                    .mutateAsync((d) => activateRoutine(d, routine))
                     .then(() => router.push('/workout'))
                     .catch(() => undefined);
                 }}

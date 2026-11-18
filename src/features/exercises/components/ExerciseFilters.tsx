@@ -1,10 +1,12 @@
+import { Palette } from '@/theme';
+import { useTheme, useThemedStyles } from '@/theme/provider';
 import { useState } from 'react';
 import { Modal, Pressable, Text, View, StyleSheet } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { Button, Heading, Screen, s } from '@/components/ui';
+import { Button, Heading, Screen, useUiStyles } from '@/components/ui';
 import { SelectionGroup } from '@/components/ui/SelectionGroup';
 import { exercises } from '@/mocks/exercises';
-import { colors as c } from '@/theme';
+
 type Filters = { muscle: string; equipment: string };
 export const emptyFilters: Filters = {
   muscle: 'All muscles',
@@ -17,6 +19,10 @@ export function ExerciseFilters({
   value: Filters;
   onChange: (filters: Filters) => void;
 }) {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const [open, setOpen] = useState<keyof Filters | null>(null);
   const [draft, setDraft] = useState(value);
   function show(key: keyof Filters): void {
@@ -100,16 +106,17 @@ export function ExerciseFilters({
     </>
   );
 }
-const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', gap: 12 },
-  control: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: c.line,
-    alignItems: 'center',
-    minHeight: 64,
-  },
-});
+const createStyles = (c: Palette) =>
+  StyleSheet.create({
+    bar: { flexDirection: 'row', gap: 12 },
+    control: {
+      flex: 1,
+      flexDirection: 'row',
+      gap: 6,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: c.line,
+      alignItems: 'center',
+      minHeight: 64,
+    },
+  });

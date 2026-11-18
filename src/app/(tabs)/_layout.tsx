@@ -1,4 +1,9 @@
-import { Redirect, Tabs } from 'expo-router';
+import { fonts } from '@/theme/typography';
+import { useTheme } from '@/theme/provider';
+import { useCallback } from 'react';
+import { router, Tabs, useFocusEffect } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { AppData } from '@/types';
 import {
   House,
   UserRound,
@@ -6,12 +11,20 @@ import {
   Library,
   ChartNoAxesCombined,
 } from 'lucide-react-native';
-import { colors } from '@/theme';
-import { useData } from '@/lib/store';
+
+import { entryRoute } from '@/features/profile/services/fitnessProfile';
 export default function TabsLayout() {
-  const { data } = useData();
-  if (!data?.onboarding || data.onboarding.status === 'pending')
-    return <Redirect href="/onboarding" />;
+  const { colors: colors } = useTheme();
+
+  const client = useQueryClient();
+  useFocusEffect(
+    useCallback(() => {
+      // A background tab layout must not redirect using a stale pre-completion render.
+      const current = client.getQueryData<AppData>(['forma']);
+      if (current && entryRoute(current.fitnessProfile) === '/welcome')
+        router.replace('/welcome');
+    }, [client]),
+  );
   return (
     <Tabs
       screenOptions={{
@@ -19,13 +32,18 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: colors.card,
           borderTopColor: colors.line,
-          height: 82,
+          height: 90,
           paddingTop: 10,
           paddingBottom: 20,
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 4 },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          lineHeight: 14,
+          fontFamily: fonts.semibold,
+          marginTop: 4,
+        },
       }}
     >
       <Tabs.Screen

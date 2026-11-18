@@ -1,5 +1,5 @@
 import { Text } from 'react-native';
-import { Button, Card, s } from '@/components/ui';
+import { Button, Card, useUiStyles } from '@/components/ui';
 import { SelectionGroup } from '@/components/ui/SelectionGroup';
 import { TrainingPreferences } from '@/types';
 type Props = {
@@ -8,6 +8,8 @@ type Props = {
   onDuration: (duration: TrainingPreferences['duration']) => void;
 };
 export function ScheduleStep({ preferences: p, onDays, onDuration }: Props) {
+  const s = useUiStyles();
+
   const beginner = p.experience === 'beginner';
   return (
     <>

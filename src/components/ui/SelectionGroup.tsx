@@ -1,7 +1,9 @@
+import { Palette } from '@/theme';
+import { useTheme, useThemedStyles } from '@/theme/provider';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Check } from 'lucide-react-native';
-import { colors as c } from '@/theme';
-import { s } from './index';
+
+import { useUiStyles } from './index';
 export type Choice<T extends string | number> = {
   value: T;
   label: string;
@@ -17,11 +19,15 @@ export function SelectionGroup<T extends string | number>({
 }: {
   label: string;
   options: Choice<T>[];
-  value: T | T[];
+  value?: T | T[];
   onChange: (value: T) => void;
   multiple?: boolean;
   disabled?: boolean;
 }) {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+  const styles = useThemedStyles(createStyles);
+
   const selected = (v: T) =>
     Array.isArray(value) ? value.includes(v) : value === v;
   return (
@@ -63,7 +69,7 @@ export function SelectionGroup<T extends string | number>({
               ]}
             >
               {selected(option.value) ? (
-                <Check size={14} color="white" />
+                <Check size={14} color={c.onPrimary} />
               ) : null}
             </View>
           </Pressable>
@@ -72,29 +78,30 @@ export function SelectionGroup<T extends string | number>({
     </View>
   );
 }
-const styles = StyleSheet.create({
-  group: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: c.line,
-  },
-  option: {
-    minHeight: 52,
-    padding: 15,
-    flexDirection: 'row',
-    gap: 16,
-    alignItems: 'center',
-  },
-  border: { borderTopWidth: 1, borderTopColor: c.line },
-  indicator: {
-    width: 20,
-    height: 20,
-    borderWidth: 1,
-    borderColor: '#AFBAB4',
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+const createStyles = (c: Palette) =>
+  StyleSheet.create({
+    group: {
+      borderRadius: 2,
+      overflow: 'hidden',
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.line,
+    },
+    option: {
+      minHeight: 52,
+      padding: 15,
+      flexDirection: 'row',
+      gap: 16,
+      alignItems: 'center',
+    },
+    border: { borderTopWidth: 1, borderTopColor: c.line },
+    indicator: {
+      width: 20,
+      height: 20,
+      borderWidth: 1,
+      borderColor: c.muted,
+      borderRadius: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  });

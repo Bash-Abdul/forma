@@ -1,4 +1,5 @@
 import { AppData, Routine, Workout } from '@/types';
+import { initialFitnessProfile } from '@/features/profile/services/fitnessProfile';
 const plan = (ids: string[]) =>
   ids.map((exerciseId) => ({ exerciseId, sets: 3, minReps: 8, maxReps: 12 }));
 export function seedData(): AppData {
@@ -80,7 +81,13 @@ export function seedData(): AppData {
     })),
   }));
   return {
-    version: 1,
+    version: 2,
+    appearance: 'system',
+    fitnessProfile: initialFitnessProfile(),
+    demoRecords: {
+      workoutIds: workouts.map((w) => w.id),
+      weightIds: Array.from({ length: 7 }, (_, i) => `weight-${i}`),
+    },
     routines,
     active: null,
     weights: [79.2, 78.9, 79.0, 78.5, 78.3, 78.1, 77.8].map((kg, i) => ({
@@ -89,5 +96,20 @@ export function seedData(): AppData {
       kg,
     })),
     workouts,
+  };
+}
+
+/** New users receive reusable starter templates, never fabricated personal history. */
+export function initialData(): AppData {
+  const examples = seedData();
+  return {
+    ...examples,
+    workouts: [],
+    weights: [],
+    demoRecords: {
+      workoutIds: [],
+      weightIds: [],
+      routineIds: examples.routines.map((r) => r.id),
+    },
   };
 }

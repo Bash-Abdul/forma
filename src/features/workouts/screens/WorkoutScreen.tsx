@@ -1,15 +1,27 @@
+import { useTheme } from '@/theme/provider';
 import { useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Check, Plus, X } from 'lucide-react-native';
-import { Back, Button, Card, Field, Heading, Screen, s } from '@/components/ui';
+import {
+  Back,
+  Button,
+  Card,
+  Field,
+  Heading,
+  Screen,
+  useUiStyles,
+} from '@/components/ui';
 import { useData, useSave } from '@/lib/store';
 import { exerciseById } from '@/mocks/exercises';
 import { LoggedSet, Workout } from '@/types';
 import { uid, validSet, volume } from '@/lib/training';
-import { colors as c } from '@/theme';
+
 import { finishWorkout } from '../services/session';
 export default function WorkoutScreen() {
+  const s = useUiStyles();
+  const { colors: c } = useTheme();
+
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { data } = useData();
   const save = useSave();
@@ -96,7 +108,13 @@ export default function WorkoutScreen() {
     <Screen>
       <Back label={readOnly ? 'Workout history' : 'Keep session & go back'} />
       <Heading
-        eyebrow={readOnly ? 'SESSION COMPLETE' : 'LET’S PUT IN THE WORK'}
+        eyebrow={
+          readOnly
+            ? data.demoRecords?.workoutIds.includes(workout.id)
+              ? 'EXAMPLE SESSION'
+              : 'SESSION COMPLETE'
+            : 'LET’S PUT IN THE WORK'
+        }
         title={workout.name}
         detail={`${new Date(workout.startedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })} · ${readOnly ? `${Math.max(1, Math.round((new Date(workout.finishedAt!).getTime() - new Date(workout.startedAt).getTime()) / 60000))} min` : 'Your session is saved on this device'}`}
       />
@@ -124,6 +142,7 @@ export default function WorkoutScreen() {
           .reverse()
           .filter(
             (w) =>
+              !data.demoRecords?.workoutIds.includes(w.id) &&
               w.id !== id &&
               new Date(w.startedAt) < new Date(workout.startedAt),
           )
@@ -204,7 +223,7 @@ export default function WorkoutScreen() {
                 >
                   <Check
                     size={18}
-                    color={set.completed ? 'white' : c.primary}
+                    color={set.completed ? c.onPrimary : c.primary}
                   />
                 </Pressable>
                 {!readOnly ? (

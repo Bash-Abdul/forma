@@ -3,13 +3,21 @@ import { exerciseById } from '@/mocks/exercises';
 import { validatePlan } from '@/features/routines/utils/validation';
 import { GeneratedPlan } from './generator';
 import { preferencesSchema } from './preferences';
+import { deriveGoals } from '@/features/profile/services/fitnessProfile';
 /** Additive persistence: preferences and plans never replace existing training data. */
 export function savePreferences(
   data: AppData,
   preferences: TrainingPreferences,
 ): AppData {
+  const profile = {
+    ...data.fitnessProfile,
+    training: preferencesSchema.parse(preferences),
+    experience: preferences.experience,
+    guidance: preferences.guidance,
+  };
   return {
     ...data,
+    fitnessProfile: { ...profile, goals: deriveGoals(profile) },
     onboarding: {
       ...data.onboarding,
       status: 'complete',
